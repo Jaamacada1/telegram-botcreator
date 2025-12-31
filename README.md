@@ -1,32 +1,84 @@
-# Telegram-botcreator
-A nice chatter-bot creator for Telegram. You don't need to write code, just a simple JSON file. 
+import random
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.filters import Command
+import asyncio
 
-## Usage (from source)
+TOKEN = "PUT_YOUR_BOT_TOKEN_HERE"
 
-```
-go run main.go
-```
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
 
-the code will load the default JSON bot file data/bot/bot.json
+# simple coins storage (memory)
+coins = {}
 
-Remember that you need to obtain your token from the [BotFather](https://telegram.me/BotFather) bot and add it to the JSON bot file.
+def add_coins(user_id, amount):
+    coins[user_id] = coins.get(user_id, 0) + amount
 
-## Usage (binary)
+def get_coins(user_id):
+    return coins.get(user_id, 0)
 
-on Linux/OSX:
+random_messages = [
+    "😂 Maanta qosol baa lagaa rabaa!",
+    "🎲 Nasiib maantana wuu kula jiraa",
+    "🔥 Random power activated!",
+    "😎 Adigu waad cajiib tahay"
+]
 
-```
-./telegram-botcreator
-```
+# Start
+@dp.message(Command("start"))
+async def start(message: Message):
+    add_coins(message.from_user.id, 5)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎲 Random", callback_data="random")],
+        [InlineKeyboardButton(
+            text="🌐 Mini App",
+            web_app=WebAppInfo(url="https://example.com")
+        )]
+    ])
+    await message.answer(
+        "Ku soo dhawoow 🎉 Random Fun Bot!\n"
+        "Waxaad heshay 🪙 5 coins\n"
+        f"Coins-kaaga: {get_coins(message.from_user.id)}",
+        reply_markup=kb
+    )
 
-or, if you want to specify a different JSON bot file location than default (data/bot/bot.json)
+# Random command
+@dp.message(Command("random"))
+async def random_fun(message: Message):
+    add_coins(message.from_user.id, 1)
+    await message.answer(
+        random.choice(random_messages) +
+        f"\n\n🪙 Coins: {get_coins(message.from_user.id)}"
+    )
 
-```
-./telegram-botcreator -json your-bot-file.json
-```
+# Dice
+@dp.message(Command("dice"))
+async def dice(message: Message):
+    await message.answer_dice("🎲")
 
-on Windows:
+# Coin toss
+@dp.message(Command("coin"))
+async def coin(message: Message):
+    result = random.choice(["🪙 HEADS", "🪙 TAILS"])
+    await message.answer(result)
 
+# Callback button
+@dp.callback_query(F.data == "random")
+async def random_button(call):
+    add_coins(call.from_user.id, 1)
+    await call.message.answer(
+        random.choice(random_messages) +
+        f"\n🪙 Coins: {get_coins(call.from_user.id)}"
+    )
+    await call.answer()
+
+# Run bot
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 telegram-botcreator.exe
 ```
